@@ -433,6 +433,7 @@ const ScreenshotToCode = () => {
       {generatedCode && (
         <CodePreview
           reactCode={generatedCode.reactCode}
+          vueCode={generatedCode.vueCode}
           cssCode={generatedCode.cssCode}
           htmlCode={generatedCode.htmlCode}
         />

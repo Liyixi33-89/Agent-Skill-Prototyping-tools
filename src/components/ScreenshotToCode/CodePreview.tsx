@@ -1,26 +1,28 @@
 import { useState, useCallback } from 'react';
 
 /** 代码 Tab 类型 */
-type CodeTab = 'react' | 'css' | 'html';
+type CodeTab = 'react' | 'vue' | 'css' | 'html';
 
 interface CodePreviewProps {
   reactCode: string;
+  vueCode: string;
   cssCode: string;
   htmlCode: string;
 }
 
 /** 代码预览/复制面板 */
-const CodePreview = ({ reactCode, cssCode, htmlCode }: CodePreviewProps) => {
+const CodePreview = ({ reactCode, vueCode, cssCode, htmlCode }: CodePreviewProps) => {
   const [activeTab, setActiveTab] = useState<CodeTab>('react');
   const [copied, setCopied] = useState(false);
 
   const CODE_TABS: { value: CodeTab; label: string; icon: string }[] = [
     { value: 'react', label: 'React + Tailwind', icon: '⚛' },
+    { value: 'vue', label: 'Vue 3 + Tailwind', icon: '🟢' },
     { value: 'css', label: 'CSS', icon: '🎨' },
     { value: 'html', label: 'HTML', icon: '📄' },
   ];
 
-  const currentCode = activeTab === 'react' ? reactCode : activeTab === 'css' ? cssCode : htmlCode;
+  const currentCode = activeTab === 'react' ? reactCode : activeTab === 'vue' ? vueCode : activeTab === 'css' ? cssCode : htmlCode;
 
   const handleCopy = useCallback(async () => {
     try {
@@ -45,6 +47,7 @@ const CodePreview = ({ reactCode, cssCode, htmlCode }: CodePreviewProps) => {
   const handleDownload = useCallback(() => {
     const extensions: Record<CodeTab, string> = {
       react: 'tsx',
+      vue: 'vue',
       css: 'css',
       html: 'html',
     };
@@ -58,7 +61,7 @@ const CodePreview = ({ reactCode, cssCode, htmlCode }: CodePreviewProps) => {
     URL.revokeObjectURL(url);
   }, [currentCode, activeTab]);
 
-  if (!reactCode && !cssCode && !htmlCode) {
+  if (!reactCode && !vueCode && !cssCode && !htmlCode) {
     return null;
   }
 

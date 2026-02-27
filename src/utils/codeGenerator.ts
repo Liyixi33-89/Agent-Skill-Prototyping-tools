@@ -233,6 +233,85 @@ export default GeneratedComponent;
 };
 
 /**
+ * 根据检测到的区块生成 Vue 3 SFC 代码
+ */
+const generateVueCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: number): string => {
+  const indent = (level: number) => '  '.repeat(level);
+
+  const blockToTemplate = (block: DetectedBlock, level: number): string => {
+    const bgColor = hexToTailwindColor(block.backgroundColor);
+    const w = pxToTailwindSize(block.width);
+    const h = pxToTailwindSize(block.height);
+
+    switch (block.type) {
+      case 'header':
+        return `${indent(level)}<header class="w-full h-${h} bg-${bgColor} flex items-center px-6">\n${indent(level + 1)}<h1 class="text-lg font-bold">Header</h1>\n${indent(level)}</header>`;
+
+      case 'footer':
+        return `${indent(level)}<footer class="w-full h-${h} bg-${bgColor} flex items-center justify-center px-6">\n${indent(level + 1)}<p class="text-sm text-gray-500">Footer Content</p>\n${indent(level)}</footer>`;
+
+      case 'nav':
+        return `${indent(level)}<nav class="w-full h-${h} bg-${bgColor} flex items-center gap-4 px-6">\n${indent(level + 1)}<a href="#" class="text-sm hover:underline">链接1</a>\n${indent(level + 1)}<a href="#" class="text-sm hover:underline">链接2</a>\n${indent(level + 1)}<a href="#" class="text-sm hover:underline">链接3</a>\n${indent(level)}</nav>`;
+
+      case 'button':
+        return `${indent(level)}<button\n${indent(level + 1)}type="button"\n${indent(level + 1)}class="w-${w} h-${h} bg-${bgColor} rounded-lg font-medium hover:opacity-90 transition-opacity"\n${indent(level + 1)}@click="handleClick"\n${indent(level)}>\n${indent(level + 1)}按钮\n${indent(level)}</button>`;
+
+      case 'card':
+        return `${indent(level)}<div class="w-${w} bg-${bgColor} rounded-xl shadow-md p-4">\n${indent(level + 1)}<div class="h-${pxToTailwindSize(Math.round(block.height * 0.6))} bg-gray-200 rounded-lg mb-3" />\n${indent(level + 1)}<h3 class="text-sm font-semibold mb-1">卡片标题</h3>\n${indent(level + 1)}<p class="text-xs text-gray-500">卡片描述内容</p>\n${indent(level)}</div>`;
+
+      case 'input':
+        return `${indent(level)}<input\n${indent(level + 1)}type="text"\n${indent(level + 1)}placeholder="请输入..."\n${indent(level + 1)}v-model="inputValue"\n${indent(level + 1)}class="w-${w} h-${h} bg-${bgColor} border border-gray-300 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"\n${indent(level)}/>`;
+
+      case 'image':
+        return `${indent(level)}<div class="w-${w} h-${h} bg-${bgColor} rounded-lg flex items-center justify-center">\n${indent(level + 1)}<span class="text-gray-400 text-sm">Image Placeholder</span>\n${indent(level)}</div>`;
+
+      default:
+        return `${indent(level)}<div class="w-${w} h-${h} bg-${bgColor} rounded-lg" />`;
+    }
+  };
+
+  const templateLines = blocks.map((block) => blockToTemplate(block, 2));
+
+  const hasButton = blocks.some((b) => b.type === 'button');
+  const hasInput = blocks.some((b) => b.type === 'input');
+
+  let scriptContent = '';
+  const imports: string[] = [];
+  const refs: string[] = [];
+  const handlers: string[] = [];
+
+  if (hasInput) {
+    imports.push('ref');
+    refs.push(`const inputValue = ref('')`);
+    handlers.push(`const handleInput = (e: Event) => {\n  console.log('输入值:', inputValue.value)\n}`);
+  }
+  if (hasButton) {
+    handlers.push(`const handleClick = () => {\n  console.log('按钮被点击')\n}`);
+  }
+
+  if (imports.length > 0 || handlers.length > 0) {
+    scriptContent = `\n\n<script setup lang="ts">\n`;
+    if (imports.length > 0) {
+      scriptContent += `import { ${imports.join(', ')} } from 'vue'\n\n`;
+    }
+    if (refs.length > 0) {
+      scriptContent += refs.join('\n') + '\n\n';
+    }
+    if (handlers.length > 0) {
+      scriptContent += handlers.join('\n\n') + '\n';
+    }
+    scriptContent += `</script>`;
+  }
+
+  return `<template>
+  <div class="relative w-full max-w-[${imgWidth}px] mx-auto min-h-[${imgHeight}px] bg-white flex flex-col items-center gap-4 p-4">
+${templateLines.join('\n\n')}
+  </div>
+</template>${scriptContent}
+`;
+};
+
+/**
  * 根据检测到的区块生成纯 CSS + HTML
  */
 const generateCssCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: number): { html: string; css: string } => {
@@ -338,12 +417,14 @@ export const generateCodeFromImage = async (image: ImageInfo): Promise<Generated
 
   // 生成代码
   const reactCode = generateReactCode(blocks, canvas.width, canvas.height);
+  const vueCode = generateVueCode(blocks, canvas.width, canvas.height);
   const { html, css } = generateCssCode(blocks, canvas.width, canvas.height);
 
   const duration = Math.round(performance.now() - startTime);
 
   return {
     reactCode,
+    vueCode,
     cssCode: css,
     htmlCode: html,
     mode: 'local',

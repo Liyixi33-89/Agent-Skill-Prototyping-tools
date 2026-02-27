@@ -12,14 +12,16 @@ const buildSystemPrompt = (customPrompt: string): string => {
 请严格按照以下 JSON 格式返回结果，不要包含其他内容：
 {
   "reactCode": "完整的 React 组件代码（使用 TailwindCSS 进行样式处理）",
+  "vueCode": "完整的 Vue 3 SFC 单文件组件代码（使用 TailwindCSS 进行样式处理）",
   "cssCode": "等效的纯 CSS 代码",
   "htmlCode": "等效的纯 HTML 代码"
 }
 
 要求：
 1. React 代码使用函数式组件 + TypeScript
-2. 样式优先使用 TailwindCSS 类名
-3. 保持代码简洁、语义化
+2. Vue 代码使用 Vue 3 Composition API + <script setup lang="ts"> 语法，单文件组件（SFC）格式，包含 <template>、<script setup lang="ts">、<style scoped>（可选）三个部分
+3. 样式优先使用 TailwindCSS 类名
+4. 保持代码简洁、语义化
 4. 尽量还原截图中的布局结构、颜色和间距
 5. 为交互元素添加合适的无障碍属性（tabIndex、aria-label 等）
 6. CSS 代码应是独立可用的，不依赖 Tailwind
@@ -32,10 +34,21 @@ const buildSystemPrompt = (customPrompt: string): string => {
    - 选项卡切换 → const handleTabChange = (tab) => { ... }
    - 下拉选择 → const handleSelect = (value) => { ... }
 8. 事件处理函数中应包含合理的默认行为（如 console.log 提示、状态切换、弹窗提示等），而非空函数
-9. 如果截图中有表单，需使用 useState 管理表单状态，并为每个输入项绑定 onChange 事件
-10. 如果截图中有列表数据，使用 useState 初始化模拟数据并通过 map 渲染
-11. HTML 和 CSS 版本中也要为按钮等元素添加 onclick 事件处理
-12. 只返回 JSON，不要包含任何 markdown 标记或其他解释文字`;
+8. Vue 代码中使用 ref/reactive 管理状态，使用 @click、@input 等 Vue 事件绑定语法
+9. **重要：为截图中识别到的所有可交互元素（按钮、链接、输入框、开关、下拉菜单、选项卡等）生成对应的事件处理函数**，使用 handle 前缀命名，例如：
+   - "取消"按钮 → const handleCancel = () => { ... }
+   - "确认/提交"按钮 → const handleSubmit = () => { ... }
+   - "删除"按钮 → const handleDelete = () => { ... }
+   - "关闭"按钮 → const handleClose = () => { ... }
+   - "搜索"输入框 → const handleSearch = (e) => { ... }
+   - 选项卡切换 → const handleTabChange = (tab) => { ... }
+   - 下拉选择 → const handleSelect = (value) => { ... }
+10. 事件处理函数中应包含合理的默认行为（如 console.log 提示、状态切换、弹窗提示等），而非空函数
+11. 如果截图中有表单，React 使用 useState、Vue 使用 ref 管理表单状态，并绑定对应的事件
+12. 如果截图中有列表数据，使用状态初始化模拟数据并通过 map（React）或 v-for（Vue）渲染
+13. HTML 和 CSS 版本中也要为按钮等元素添加 onclick 事件处理
+14. Vue 代码中事件函数同样使用 handle 前缀命名，与 React 版本保持一致的业务逻辑
+15. 只返回 JSON，不要包含任何 markdown 标记或其他解释文字`;
 
   if (customPrompt.trim()) {
     return base + `\n\n额外要求：\n${customPrompt}`;
@@ -55,12 +68,13 @@ const extractBase64Data = (dataUrl: string): string => {
 /**
  * 解析 LLM 返回的 JSON 内容
  */
-const parseLLMResponse = (content: string): { reactCode: string; cssCode: string; htmlCode: string } => {
+const parseLLMResponse = (content: string): { reactCode: string; vueCode: string; cssCode: string; htmlCode: string } => {
   // 尝试直接 JSON.parse
   try {
     const parsed = JSON.parse(content);
     return {
       reactCode: parsed.reactCode || '',
+      vueCode: parsed.vueCode || '',
       cssCode: parsed.cssCode || '',
       htmlCode: parsed.htmlCode || '',
     };
@@ -72,6 +86,7 @@ const parseLLMResponse = (content: string): { reactCode: string; cssCode: string
         const parsed = JSON.parse(jsonMatch[1].trim());
         return {
           reactCode: parsed.reactCode || '',
+          vueCode: parsed.vueCode || '',
           cssCode: parsed.cssCode || '',
           htmlCode: parsed.htmlCode || '',
         };
@@ -87,6 +102,7 @@ const parseLLMResponse = (content: string): { reactCode: string; cssCode: string
         const parsed = JSON.parse(jsonObjMatch[0]);
         return {
           reactCode: parsed.reactCode || '',
+          vueCode: parsed.vueCode || '',
           cssCode: parsed.cssCode || '',
           htmlCode: parsed.htmlCode || '',
         };
@@ -97,11 +113,13 @@ const parseLLMResponse = (content: string): { reactCode: string; cssCode: string
 
     // 尝试提取各个代码块
     const reactMatch = content.match(/```(?:tsx?|jsx?|react)\s*([\s\S]*?)```/);
+    const vueMatch = content.match(/```(?:vue)\s*([\s\S]*?)```/);
     const cssMatch = content.match(/```css\s*([\s\S]*?)```/);
     const htmlMatch = content.match(/```html\s*([\s\S]*?)```/);
 
     return {
       reactCode: reactMatch?.[1]?.trim() || content,
+      vueCode: vueMatch?.[1]?.trim() || '',
       cssCode: cssMatch?.[1]?.trim() || '',
       htmlCode: htmlMatch?.[1]?.trim() || '',
     };
@@ -163,7 +181,7 @@ export const generateCodeWithOllama = async (
 
   const imageBase64 = extractBase64Data(image.src);
   const systemPrompt = buildSystemPrompt(config.customPrompt);
-  const userPrompt = `请分析这张 UI 截图（${image.width}x${image.height}），生成对应的 React 组件代码、CSS 代码和 HTML 代码。请严格按照 JSON 格式返回。`;
+  const userPrompt = `请分析这张 UI 截图（${image.width}x${image.height}），生成对应的 React 组件代码、Vue 3 组件代码、CSS 代码和 HTML 代码。请严格按照 JSON 格式返回。`;
 
   const requestBody = {
     baseUrl: config.baseUrl,
@@ -193,11 +211,12 @@ export const generateCodeWithOllama = async (
     throw new Error('Ollama 返回内容为空，请确认所选模型支持图片输入（Vision）');
   }
 
-  const { reactCode, cssCode, htmlCode } = parseLLMResponse(content);
+  const { reactCode, vueCode, cssCode, htmlCode } = parseLLMResponse(content);
   const duration = Math.round(performance.now() - startTime);
 
   return {
     reactCode,
+    vueCode,
     cssCode,
     htmlCode,
     mode: 'ollama',

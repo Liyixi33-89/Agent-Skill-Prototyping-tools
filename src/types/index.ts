@@ -80,6 +80,8 @@ export interface DetectedBlock {
 export interface GeneratedCode {
   /** React 组件代码 (JSX + TailwindCSS) */
   reactCode: string;
+  /** Vue 组件代码 (SFC + TailwindCSS) */
+  vueCode: string;
   /** 纯 CSS 版本 */
   cssCode: string;
   /** HTML 结构 */
