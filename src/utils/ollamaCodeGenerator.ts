@@ -1,4 +1,5 @@
-import type { GeneratedCode, ImageInfo, OllamaConfig } from '../types';
+import type { DeviceType, GeneratedCode, ImageInfo, OllamaConfig } from '../types';
+import { MOBILE_BASE_WIDTH } from '../types';
 
 /** 代理服务基础地址（开发环境通过 Vite proxy 转发，生产环境需配置实际地址） */
 const PROXY_BASE = '';
@@ -6,8 +7,18 @@ const PROXY_BASE = '';
 /**
  * 构建发送给 Ollama Vision 模型的系统提示词
  */
-const buildSystemPrompt = (customPrompt: string): string => {
-  const base = `你是一个专业的前端开发工程师。用户将给你一张 UI 截图，你需要分析截图中的界面布局、颜色、排版和所有交互元素，并生成对应的**功能完备、可交互**的代码。
+const buildSystemPrompt = (customPrompt: string, deviceType: DeviceType): string => {
+  const deviceHint = deviceType === 'mobile'
+    ? `
+
+**重要：这是移动端设计稿，基准宽度为 ${MOBILE_BASE_WIDTH}px。**
+- CSS 代码中所有尺寸单位必须使用 rem（基准: 1rem = ${MOBILE_BASE_WIDTH / 10}px，即设计稿 px 值 / ${MOBILE_BASE_WIDTH / 10}）
+- CSS 开头必须包含: html { font-size: ${(100 / MOBILE_BASE_WIDTH * 10).toFixed(6)}vw; } 和 @media screen and (min-width: 750px) { html { font-size: 75px; } }
+- HTML 代码中的内联样式也使用 rem
+- React/Vue 代码中 TailwindCSS 类名保持不变，但自定义值使用 rem，例如: max-w-[10rem] 而不是 max-w-[375px]`
+    : '\n\n这是 PC 端设计稿，使用 px 作为尺寸单位。';
+
+  const base = `你是一个专业的前端开发工程师。用户将给你一张 UI 截图，你需要分析截图中的界面布局、颜色、排版和所有交互元素，并生成对应的**功能完备、可交互**的代码。${deviceHint}
 
 请严格按照以下 JSON 格式返回结果，不要包含其他内容：
 {
@@ -176,12 +187,13 @@ export const getOllamaModels = async (baseUrl: string): Promise<OllamaModelInfo[
 export const generateCodeWithOllama = async (
   image: ImageInfo,
   config: OllamaConfig,
+  deviceType: DeviceType = 'pc',
 ): Promise<GeneratedCode> => {
   const startTime = performance.now();
 
   const imageBase64 = extractBase64Data(image.src);
-  const systemPrompt = buildSystemPrompt(config.customPrompt);
-  const userPrompt = `请分析这张 UI 截图（${image.width}x${image.height}），生成对应的 React 组件代码、Vue 3 组件代码、CSS 代码和 HTML 代码。请严格按照 JSON 格式返回。`;
+  const systemPrompt = buildSystemPrompt(config.customPrompt, deviceType);
+  const userPrompt = `请分析这张 UI 截图（${image.width}x${image.height}），这是${deviceType === 'mobile' ? '移动端（基准宽度 ' + MOBILE_BASE_WIDTH + 'px）' : 'PC 端'}设计稿，生成对应的 React 组件代码、Vue 3 组件代码、CSS 代码和 HTML 代码。请严格按照 JSON 格式返回。`;
 
   const requestBody = {
     baseUrl: config.baseUrl,
@@ -220,6 +232,7 @@ export const generateCodeWithOllama = async (
     cssCode,
     htmlCode,
     mode: 'ollama',
+    deviceType,
     duration,
   };
 };

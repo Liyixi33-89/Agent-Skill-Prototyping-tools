@@ -1,4 +1,5 @@
-import type { DetectedBlock, GeneratedCode, ImageInfo } from '../types';
+import type { DetectedBlock, DeviceType, GeneratedCode, ImageInfo } from '../types';
+import { MOBILE_BASE_WIDTH } from '../types';
 
 /**
  * 将 RGB 值转为 HEX 颜色
@@ -33,6 +34,15 @@ const hexToTailwindColor = (hex: string): string => {
   if (lum > 60) return 'gray-500';
   if (lum > 30) return 'gray-700';
   return 'gray-900';
+};
+
+/**
+ * 将像素值转为 rem（以 375px 为基准，1rem = 基准宽度/10 = 37.5px）
+ */
+const pxToRem = (px: number): string => {
+  const rem = px / (MOBILE_BASE_WIDTH / 10);
+  // 保留 4 位小数，去掉末尾零
+  return `${parseFloat(rem.toFixed(4))}rem`;
 };
 
 /**
@@ -314,8 +324,44 @@ ${templateLines.join('\n\n')}
 /**
  * 根据检测到的区块生成纯 CSS + HTML
  */
-const generateCssCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: number): { html: string; css: string } => {
-  let css = `.generated-container {\n  position: relative;\n  width: 100%;\n  max-width: ${imgWidth}px;\n  min-height: ${imgHeight}px;\n  margin: 0 auto;\n  background: #ffffff;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 16px;\n  padding: 16px;\n}\n\n`;
+const generateCssCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: number, deviceType: DeviceType): { html: string; css: string } => {
+  const isMobile = deviceType === 'mobile';
+  const unit = (px: number) => isMobile ? pxToRem(px) : `${px}px`;
+
+  let css = '';
+
+  // 移动端添加 html font-size 设置和响应式基准
+  if (isMobile) {
+    css += `/* 移动端 rem 基准设置（设计稿基准宽度: ${MOBILE_BASE_WIDTH}px） */
+/* 1rem = ${MOBILE_BASE_WIDTH / 10}px */
+html {
+  font-size: ${(100 / MOBILE_BASE_WIDTH * 10).toFixed(6)}vw; /* 动态计算，保证任何屏幕宽度下 1rem 始终等于屏幕宽度/10 */
+}
+
+@media screen and (min-width: 750px) {
+  html {
+    font-size: 75px; /* 限制最大宽度 */
+  }
+}
+
+`;
+  }
+
+  css += `.generated-container {
+  position: relative;
+  width: 100%;
+  max-width: ${isMobile ? pxToRem(imgWidth) : `${imgWidth}px`};
+  min-height: ${isMobile ? pxToRem(imgHeight) : `${imgHeight}px`};
+  margin: 0 auto;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: ${unit(16)};
+  padding: ${unit(16)};
+}
+
+`;
 
   let html = '<div class="generated-container">\n';
 
@@ -323,10 +369,10 @@ const generateCssCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: n
     const className = `block-${block.type}-${index}`;
 
     css += `.${className} {\n`;
-    css += `  width: ${block.width}px;\n`;
-    css += `  height: ${block.height}px;\n`;
+    css += `  width: ${unit(block.width)};\n`;
+    css += `  height: ${unit(block.height)};\n`;
     css += `  background-color: ${block.backgroundColor};\n`;
-    css += `  border-radius: 8px;\n`;
+    css += `  border-radius: ${unit(8)};\n`;
 
     switch (block.type) {
       case 'header':
@@ -335,7 +381,7 @@ const generateCssCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: n
         css += `  width: 100%;\n`;
         css += `  display: flex;\n`;
         css += `  align-items: center;\n`;
-        css += `  padding: 0 24px;\n`;
+        css += `  padding: 0 ${unit(24)};\n`;
         break;
       case 'button':
         css += `  cursor: pointer;\n`;
@@ -343,16 +389,17 @@ const generateCssCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: n
         css += `  align-items: center;\n`;
         css += `  justify-content: center;\n`;
         css += `  font-weight: 500;\n`;
+        css += `  font-size: ${unit(14)};\n`;
         css += `  transition: opacity 0.2s;\n`;
         break;
       case 'card':
-        css += `  padding: 16px;\n`;
-        css += `  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);\n`;
+        css += `  padding: ${unit(16)};\n`;
+        css += `  box-shadow: 0 ${unit(4)} ${unit(6)} -${unit(1)} rgba(0, 0, 0, 0.1);\n`;
         break;
       case 'input':
         css += `  border: 1px solid #d1d5db;\n`;
-        css += `  padding: 0 12px;\n`;
-        css += `  font-size: 14px;\n`;
+        css += `  padding: 0 ${unit(12)};\n`;
+        css += `  font-size: ${unit(14)};\n`;
         css += `  outline: none;\n`;
         break;
     }
@@ -391,7 +438,7 @@ const generateCssCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: n
 /**
  * 从上传的图片中分析并生成代码（本地模式）
  */
-export const generateCodeFromImage = async (image: ImageInfo): Promise<GeneratedCode> => {
+export const generateCodeFromImage = async (image: ImageInfo, deviceType: DeviceType = 'pc'): Promise<GeneratedCode> => {
   const startTime = performance.now();
 
   // 将图片绘制到 Canvas 获取像素数据
@@ -418,7 +465,7 @@ export const generateCodeFromImage = async (image: ImageInfo): Promise<Generated
   // 生成代码
   const reactCode = generateReactCode(blocks, canvas.width, canvas.height);
   const vueCode = generateVueCode(blocks, canvas.width, canvas.height);
-  const { html, css } = generateCssCode(blocks, canvas.width, canvas.height);
+  const { html, css } = generateCssCode(blocks, canvas.width, canvas.height, deviceType);
 
   const duration = Math.round(performance.now() - startTime);
 
@@ -428,6 +475,7 @@ export const generateCodeFromImage = async (image: ImageInfo): Promise<Generated
     cssCode: css,
     htmlCode: html,
     mode: 'local',
+    deviceType,
     duration,
   };
 };

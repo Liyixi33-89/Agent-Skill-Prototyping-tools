@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import type { DeviceType } from '../../types';
 
 /** 代码 Tab 类型 */
 type CodeTab = 'react' | 'vue' | 'css' | 'html';
@@ -8,10 +9,11 @@ interface CodePreviewProps {
   vueCode: string;
   cssCode: string;
   htmlCode: string;
+  deviceType: DeviceType;
 }
 
 /** 代码预览/复制面板 */
-const CodePreview = ({ reactCode, vueCode, cssCode, htmlCode }: CodePreviewProps) => {
+const CodePreview = ({ reactCode, vueCode, cssCode, htmlCode, deviceType }: CodePreviewProps) => {
   const [activeTab, setActiveTab] = useState<CodeTab>('react');
   const [copied, setCopied] = useState(false);
 
@@ -143,9 +145,21 @@ const CodePreview = ({ reactCode, vueCode, cssCode, htmlCode }: CodePreviewProps
 
       {/* 代码行数统计 */}
       <div className="border-t border-slate-700/50 px-4 py-1.5 flex items-center justify-between">
-        <span className="text-[10px] text-slate-600">
-          {currentCode.split('\n').length} 行
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-600">
+            {currentCode.split('\n').length} 行
+          </span>
+          {deviceType === 'mobile' && (
+            <span className="text-[10px] text-orange-400/70 bg-orange-500/10 px-1.5 py-0.5 rounded">
+              📱 移动端 rem
+            </span>
+          )}
+          {deviceType === 'pc' && (
+            <span className="text-[10px] text-sky-400/70 bg-sky-500/10 px-1.5 py-0.5 rounded">
+              🖥 PC 端 px
+            </span>
+          )}
+        </div>
         <span className="text-[10px] text-slate-600">
           {(new Blob([currentCode]).size / 1024).toFixed(1)} KB
         </span>

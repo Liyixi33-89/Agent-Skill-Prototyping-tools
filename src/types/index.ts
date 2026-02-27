@@ -53,6 +53,12 @@ export const DEFAULT_DIFF_OPTIONS: DiffOptions = {
 
 /** ========== 截图转代码相关类型 ========== */
 
+/** 设备类型 */
+export type DeviceType = 'pc' | 'mobile';
+
+/** 移动端基准宽度 (px) */
+export const MOBILE_BASE_WIDTH = 375;
+
 /** 代码生成模式 */
 export type CodeGenMode = 'local' | 'ai' | 'ollama';
 
@@ -88,6 +94,8 @@ export interface GeneratedCode {
   htmlCode: string;
   /** 生成模式 */
   mode: CodeGenMode;
+  /** 设备类型 */
+  deviceType: DeviceType;
   /** 生成耗时 (ms) */
   duration: number;
 }

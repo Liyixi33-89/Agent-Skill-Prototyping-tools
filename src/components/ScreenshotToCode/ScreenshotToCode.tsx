@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { AiApiConfig, CodeGenMode, GeneratedCode, ImageInfo, OllamaConfig } from '../../types';
+import type { AiApiConfig, CodeGenMode, DeviceType, GeneratedCode, ImageInfo, OllamaConfig } from '../../types';
 import { DEFAULT_AI_CONFIG, DEFAULT_OLLAMA_CONFIG } from '../../types';
 import { loadImageFromFile } from '../../utils/imageDiff';
 import { generateCodeFromImage } from '../../utils/codeGenerator';
@@ -21,6 +21,7 @@ const ScreenshotToCode = () => {
   const [ollamaConfig, setOllamaConfig] = useState<OllamaConfig>(DEFAULT_OLLAMA_CONFIG);
   const [showOllamaSettings, setShowOllamaSettings] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [deviceType, setDeviceType] = useState<DeviceType>('pc');
 
   /** 处理图片上传 */
   const handleFileUpload = useCallback(async (file: File) => {
@@ -80,11 +81,11 @@ const ScreenshotToCode = () => {
       let result: GeneratedCode;
 
       if (genMode === 'ai') {
-        result = await generateCodeWithAI(screenshot, aiConfig);
+        result = await generateCodeWithAI(screenshot, aiConfig, deviceType);
       } else if (genMode === 'ollama') {
-        result = await generateCodeWithOllama(screenshot, ollamaConfig);
+        result = await generateCodeWithOllama(screenshot, ollamaConfig, deviceType);
       } else {
-        result = await generateCodeFromImage(screenshot);
+        result = await generateCodeFromImage(screenshot, deviceType);
       }
 
       setGeneratedCode(result);
@@ -93,7 +94,7 @@ const ScreenshotToCode = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [screenshot, genMode, aiConfig, ollamaConfig]);
+  }, [screenshot, genMode, aiConfig, ollamaConfig, deviceType]);
 
   /** 重置 */
   const handleReset = () => {
@@ -171,6 +172,53 @@ const ScreenshotToCode = () => {
 
         {/* 操作按钮 */}
         <div className="flex items-center gap-2">
+          {/* PC/移动端切换开关 */}
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-800/70 border border-slate-700/50">
+            <button
+              type="button"
+              onClick={() => setDeviceType('pc')}
+              className={`
+                flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium
+                transition-all duration-150
+                ${deviceType === 'pc'
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                }
+              `}
+              aria-label="切换为 PC 端模式"
+              tabIndex={0}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              PC
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeviceType('mobile')}
+              className={`
+                flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium
+                transition-all duration-150
+                ${deviceType === 'mobile'
+                  ? 'bg-orange-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                }
+              `}
+              aria-label="切换为移动端模式（375px 基准 rem）"
+              tabIndex={0}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              移动端
+            </button>
+          </div>
+
+          {deviceType === 'mobile' && (
+            <span className="text-[10px] text-orange-400/70 bg-orange-500/10 px-2 py-0.5 rounded">
+              基准 375px → rem
+            </span>
+          )}
           {genMode === 'ai' && (
             <button
               type="button"
@@ -436,6 +484,7 @@ const ScreenshotToCode = () => {
           vueCode={generatedCode.vueCode}
           cssCode={generatedCode.cssCode}
           htmlCode={generatedCode.htmlCode}
+          deviceType={generatedCode.deviceType}
         />
       )}
     </div>
