@@ -15,23 +15,23 @@ const buildSystemPrompt = (customPrompt: string, deviceType: DeviceType): string
 - CSS 代码中所有尺寸单位必须使用 rem（基准: 1rem = ${MOBILE_BASE_WIDTH / 10}px，即设计稿 px 值 / ${MOBILE_BASE_WIDTH / 10}）
 - CSS 开头必须包含: html { font-size: ${(100 / MOBILE_BASE_WIDTH * 10).toFixed(6)}vw; } 和 @media screen and (min-width: 750px) { html { font-size: 75px; } }
 - HTML 代码中的内联样式也使用 rem
-- React/Vue 代码中 TailwindCSS 类名保持不变，但自定义值使用 rem，例如: max-w-[10rem] 而不是 max-w-[375px]`
+- React/Vue 代码中的 CSS 样式也全部使用 rem 单位`
     : '\n\n这是 PC 端设计稿，使用 px 作为尺寸单位。';
 
   const base = `你是一个专业的前端开发工程师。用户将给你一张 UI 截图，你需要分析截图中的界面布局、颜色、排版和所有交互元素，并生成对应的**功能完备、可交互**的代码。${deviceHint}
 
 请严格按照以下 JSON 格式返回结果，不要包含其他内容：
 {
-  "reactCode": "完整的 React 组件代码（使用 TailwindCSS 进行样式处理）",
-  "vueCode": "完整的 Vue 3 SFC 单文件组件代码（使用 TailwindCSS 进行样式处理）",
+  "reactCode": "完整的 React 组件代码（使用纯 CSS 进行样式处理，CSS 写在组件文件内，使用内联 style 对象或 CSS-in-JS 方式）",
+  "vueCode": "完整的 Vue 3 SFC 单文件组件代码（样式写在 <style scoped> 中，使用纯 CSS）",
   "cssCode": "等效的纯 CSS 代码",
   "htmlCode": "等效的纯 HTML 代码"
 }
 
 要求：
-1. React 代码使用函数式组件 + TypeScript
-2. Vue 代码使用 Vue 3 Composition API + <script setup lang="ts"> 语法，单文件组件（SFC）格式，包含 <template>、<script setup lang="ts">、<style scoped>（可选）三个部分
-3. 样式优先使用 TailwindCSS 类名
+1. React 代码使用函数式组件 + TypeScript，样式使用内联 style 对象（CSSProperties）或在组件底部定义 styles 对象，不要使用 TailwindCSS
+2. Vue 代码使用 Vue 3 Composition API + <script setup lang="ts"> 语法，单文件组件（SFC）格式，包含 <template>、<script setup lang="ts">、<style scoped> 三个部分，样式写在 <style scoped> 中，使用纯 CSS class，不要使用 TailwindCSS
+3. React 和 Vue 代码中禁止使用 TailwindCSS 类名，所有样式必须使用纯 CSS
 4. 保持代码简洁、语义化
 4. 尽量还原截图中的布局结构、颜色和间距
 5. 为交互元素添加合适的无障碍属性（tabIndex、aria-label 等）

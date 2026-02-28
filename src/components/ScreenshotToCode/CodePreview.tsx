@@ -18,8 +18,8 @@ const CodePreview = ({ reactCode, vueCode, cssCode, htmlCode, deviceType }: Code
   const [copied, setCopied] = useState(false);
 
   const CODE_TABS: { value: CodeTab; label: string; icon: string }[] = [
-    { value: 'react', label: 'React + Tailwind', icon: '⚛' },
-    { value: 'vue', label: 'Vue 3 + Tailwind', icon: '🟢' },
+    { value: 'react', label: 'React + CSS', icon: '⚛' },
+    { value: 'vue', label: 'Vue + CSS', icon: '🟢' },
     { value: 'css', label: 'CSS', icon: '🎨' },
     { value: 'html', label: 'HTML', icon: '📄' },
   ];

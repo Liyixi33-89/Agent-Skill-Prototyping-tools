@@ -9,56 +9,12 @@ const rgbToHex = (r: number, g: number, b: number): string => {
 };
 
 /**
- * 计算像素亮度 (0-255)
- */
-const getLuminance = (r: number, g: number, b: number): number => {
-  return Math.round(r * 0.299 + g * 0.587 + b * 0.114);
-};
-
-/**
- * 根据 HEX 颜色找到最接近的 Tailwind 颜色类名
- */
-const hexToTailwindColor = (hex: string): string => {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const lum = getLuminance(r, g, b);
-
-  // 简化映射：根据亮度和色相推断 Tailwind 颜色
-  if (lum > 245) return 'white';
-  if (lum < 15) return 'black';
-  if (lum > 220) return 'gray-100';
-  if (lum > 190) return 'gray-200';
-  if (lum > 150) return 'gray-300';
-  if (lum > 100) return 'gray-400';
-  if (lum > 60) return 'gray-500';
-  if (lum > 30) return 'gray-700';
-  return 'gray-900';
-};
-
-/**
  * 将像素值转为 rem（以 375px 为基准，1rem = 基准宽度/10 = 37.5px）
  */
 const pxToRem = (px: number): string => {
   const rem = px / (MOBILE_BASE_WIDTH / 10);
   // 保留 4 位小数，去掉末尾零
   return `${parseFloat(rem.toFixed(4))}rem`;
-};
-
-/**
- * 将像素尺寸转为最接近的 Tailwind 间距/尺寸类
- */
-const pxToTailwindSize = (px: number): string => {
-  const mapping: [number, string][] = [
-    [4, '1'], [8, '2'], [12, '3'], [16, '4'], [20, '5'], [24, '6'],
-    [32, '8'], [40, '10'], [48, '12'], [56, '14'], [64, '16'],
-    [80, '20'], [96, '24'], [128, '32'], [160, '40'], [192, '48'],
-    [256, '64'], [320, '80'], [384, '96'],
-  ];
-  for (const [size, cls] of mapping) {
-    if (px <= size) return cls;
-  }
-  return `[${px}px]`;
 };
 
 /**
@@ -185,106 +141,136 @@ const detectBlocks = (imageData: ImageData, imgWidth: number, imgHeight: number)
 };
 
 /**
- * 根据检测到的区块生成 React + TailwindCSS 代码
+ * 根据检测到的区块生成 React + 纯 CSS 代码
  */
 const generateReactCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: number): string => {
   const indent = (level: number) => '  '.repeat(level);
 
-  const blockToJsx = (block: DetectedBlock, level: number): string => {
-    const bgColor = hexToTailwindColor(block.backgroundColor);
-    const w = pxToTailwindSize(block.width);
-    const h = pxToTailwindSize(block.height);
+  const blockToJsx = (block: DetectedBlock, level: number, index: number): string => {
+    const className = `block-${block.type}-${index}`;
 
     switch (block.type) {
       case 'header':
-        return `${indent(level)}<header className="w-full h-${h} bg-${bgColor} flex items-center px-6">\n${indent(level + 1)}<h1 className="text-lg font-bold">Header</h1>\n${indent(level)}</header>`;
+        return `${indent(level)}<header className="${className}">\n${indent(level + 1)}<h1>Header</h1>\n${indent(level)}</header>`;
 
       case 'footer':
-        return `${indent(level)}<footer className="w-full h-${h} bg-${bgColor} flex items-center justify-center px-6">\n${indent(level + 1)}<p className="text-sm text-gray-500">Footer Content</p>\n${indent(level)}</footer>`;
+        return `${indent(level)}<footer className="${className}">\n${indent(level + 1)}<p>Footer Content</p>\n${indent(level)}</footer>`;
 
       case 'nav':
-        return `${indent(level)}<nav className="w-full h-${h} bg-${bgColor} flex items-center gap-4 px-6">\n${indent(level + 1)}<a href="#" className="text-sm hover:underline">链接1</a>\n${indent(level + 1)}<a href="#" className="text-sm hover:underline">链接2</a>\n${indent(level + 1)}<a href="#" className="text-sm hover:underline">链接3</a>\n${indent(level)}</nav>`;
+        return `${indent(level)}<nav className="${className}">\n${indent(level + 1)}<a href="#">链接1</a>\n${indent(level + 1)}<a href="#">链接2</a>\n${indent(level + 1)}<a href="#">链接3</a>\n${indent(level)}</nav>`;
 
       case 'button':
-        return `${indent(level)}<button\n${indent(level + 1)}type="button"\n${indent(level + 1)}className="w-${w} h-${h} bg-${bgColor} rounded-lg font-medium hover:opacity-90 transition-opacity"\n${indent(level)}>\n${indent(level + 1)}按钮\n${indent(level)}</button>`;
+        return `${indent(level)}<button\n${indent(level + 1)}type="button"\n${indent(level + 1)}className="${className}"\n${indent(level + 1)}onClick={handleClick}\n${indent(level)}>\n${indent(level + 1)}按钮\n${indent(level)}</button>`;
 
       case 'card':
-        return `${indent(level)}<div className="w-${w} bg-${bgColor} rounded-xl shadow-md p-4">\n${indent(level + 1)}<div className="h-${pxToTailwindSize(Math.round(block.height * 0.6))} bg-gray-200 rounded-lg mb-3" />\n${indent(level + 1)}<h3 className="text-sm font-semibold mb-1">卡片标题</h3>\n${indent(level + 1)}<p className="text-xs text-gray-500">卡片描述内容</p>\n${indent(level)}</div>`;
+        return `${indent(level)}<div className="${className}">\n${indent(level + 1)}<div className="card-image" />\n${indent(level + 1)}<h3>卡片标题</h3>\n${indent(level + 1)}<p>卡片描述内容</p>\n${indent(level)}</div>`;
 
       case 'input':
-        return `${indent(level)}<input\n${indent(level + 1)}type="text"\n${indent(level + 1)}placeholder="请输入..."\n${indent(level + 1)}className="w-${w} h-${h} bg-${bgColor} border border-gray-300 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"\n${indent(level)}/>`;
+        return `${indent(level)}<input\n${indent(level + 1)}type="text"\n${indent(level + 1)}placeholder="请输入..."\n${indent(level + 1)}className="${className}"\n${indent(level)}/>`;
 
       case 'image':
-        return `${indent(level)}<div className="w-${w} h-${h} bg-${bgColor} rounded-lg flex items-center justify-center">\n${indent(level + 1)}<span className="text-gray-400 text-sm">Image Placeholder</span>\n${indent(level)}</div>`;
+        return `${indent(level)}<div className="${className}">\n${indent(level + 1)}<span>Image Placeholder</span>\n${indent(level)}</div>`;
 
       default:
-        return `${indent(level)}<div className="w-${w} h-${h} bg-${bgColor} rounded-lg" />`;
+        return `${indent(level)}<div className="${className}" />`;
     }
   };
 
-  const bodyLines = blocks.map((block) => blockToJsx(block, 2));
+  const bodyLines = blocks.map((block, index) => blockToJsx(block, 2, index));
 
-  return `import React from 'react';
+  // 生成 CSS styles 对象
+  let stylesCode = `\nconst styles: Record<string, React.CSSProperties> = {\n`;
+  stylesCode += `  container: {\n    position: 'relative',\n    width: '100%',\n    maxWidth: '${imgWidth}px',\n    minHeight: '${imgHeight}px',\n    margin: '0 auto',\n    background: '#ffffff',\n    display: 'flex',\n    flexDirection: 'column',\n    alignItems: 'center',\n    gap: '16px',\n    padding: '16px',\n  },\n`;
 
-/**
- * 由截图自动生成的 React 组件
- * 原始尺寸: ${imgWidth} x ${imgHeight}
- */
-const GeneratedComponent = () => {
-  return (
-    <div className="relative w-full max-w-[${imgWidth}px] mx-auto min-h-[${imgHeight}px] bg-white flex flex-col items-center gap-4 p-4">
-${bodyLines.join('\n\n')}
-    </div>
-  );
+  blocks.forEach((block, index) => {
+    const key = `block_${block.type}_${index}`;
+    stylesCode += `  '${key}': {\n`;
+    stylesCode += `    width: '${block.width}px',\n`;
+    stylesCode += `    height: '${block.height}px',\n`;
+    stylesCode += `    backgroundColor: '${block.backgroundColor}',\n`;
+    stylesCode += `    borderRadius: '8px',\n`;
+
+    switch (block.type) {
+      case 'header':
+      case 'footer':
+      case 'nav':
+        stylesCode += `    width: '100%',\n`;
+        stylesCode += `    display: 'flex',\n`;
+        stylesCode += `    alignItems: 'center',\n`;
+        stylesCode += `    padding: '0 24px',\n`;
+        break;
+      case 'button':
+        stylesCode += `    cursor: 'pointer',\n`;
+        stylesCode += `    display: 'flex',\n`;
+        stylesCode += `    alignItems: 'center',\n`;
+        stylesCode += `    justifyContent: 'center',\n`;
+        stylesCode += `    fontWeight: 500,\n`;
+        stylesCode += `    fontSize: '14px',\n`;
+        stylesCode += `    border: 'none',\n`;
+        break;
+      case 'card':
+        stylesCode += `    padding: '16px',\n`;
+        stylesCode += `    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',\n`;
+        break;
+      case 'input':
+        stylesCode += `    border: '1px solid #d1d5db',\n`;
+        stylesCode += `    padding: '0 12px',\n`;
+        stylesCode += `    fontSize: '14px',\n`;
+        stylesCode += `    outline: 'none',\n`;
+        break;
+    }
+
+    stylesCode += `  },\n`;
+  });
+  stylesCode += `};`;
+
+  const hasButton = blocks.some((b) => b.type === 'button');
+
+  return `import React from 'react';\n\n/**\n * 由截图自动生成的 React 组件\n * 原始尺寸: ${imgWidth} x ${imgHeight}\n */\nconst GeneratedComponent = () => {\n${hasButton ? '  const handleClick = () => {\n    console.log(\'按钮被点击\');\n  };\n\n' : ''}  return (\n    <div style={styles.container}>\n${bodyLines.join('\n\n')}\n    </div>\n  );\n};\n${stylesCode}\n\nexport default GeneratedComponent;\n`;
 };
 
-export default GeneratedComponent;
-`;
-};
-
 /**
- * 根据检测到的区块生成 Vue 3 SFC 代码
+ * 根据检测到的区块生成 Vue 3 SFC + 纯 CSS 代码
  */
 const generateVueCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: number): string => {
   const indent = (level: number) => '  '.repeat(level);
 
-  const blockToTemplate = (block: DetectedBlock, level: number): string => {
-    const bgColor = hexToTailwindColor(block.backgroundColor);
-    const w = pxToTailwindSize(block.width);
-    const h = pxToTailwindSize(block.height);
+  const blockToTemplate = (block: DetectedBlock, level: number, index: number): string => {
+    const className = `block-${block.type}-${index}`;
 
     switch (block.type) {
       case 'header':
-        return `${indent(level)}<header class="w-full h-${h} bg-${bgColor} flex items-center px-6">\n${indent(level + 1)}<h1 class="text-lg font-bold">Header</h1>\n${indent(level)}</header>`;
+        return `${indent(level)}<header class="${className}">\n${indent(level + 1)}<h1>Header</h1>\n${indent(level)}</header>`;
 
       case 'footer':
-        return `${indent(level)}<footer class="w-full h-${h} bg-${bgColor} flex items-center justify-center px-6">\n${indent(level + 1)}<p class="text-sm text-gray-500">Footer Content</p>\n${indent(level)}</footer>`;
+        return `${indent(level)}<footer class="${className}">\n${indent(level + 1)}<p>Footer Content</p>\n${indent(level)}</footer>`;
 
       case 'nav':
-        return `${indent(level)}<nav class="w-full h-${h} bg-${bgColor} flex items-center gap-4 px-6">\n${indent(level + 1)}<a href="#" class="text-sm hover:underline">链接1</a>\n${indent(level + 1)}<a href="#" class="text-sm hover:underline">链接2</a>\n${indent(level + 1)}<a href="#" class="text-sm hover:underline">链接3</a>\n${indent(level)}</nav>`;
+        return `${indent(level)}<nav class="${className}">\n${indent(level + 1)}<a href="#">链接1</a>\n${indent(level + 1)}<a href="#">链接2</a>\n${indent(level + 1)}<a href="#">链接3</a>\n${indent(level)}</nav>`;
 
       case 'button':
-        return `${indent(level)}<button\n${indent(level + 1)}type="button"\n${indent(level + 1)}class="w-${w} h-${h} bg-${bgColor} rounded-lg font-medium hover:opacity-90 transition-opacity"\n${indent(level + 1)}@click="handleClick"\n${indent(level)}>\n${indent(level + 1)}按钮\n${indent(level)}</button>`;
+        return `${indent(level)}<button\n${indent(level + 1)}type="button"\n${indent(level + 1)}class="${className}"\n${indent(level + 1)}@click="handleClick"\n${indent(level)}>\n${indent(level + 1)}按钮\n${indent(level)}</button>`;
 
       case 'card':
-        return `${indent(level)}<div class="w-${w} bg-${bgColor} rounded-xl shadow-md p-4">\n${indent(level + 1)}<div class="h-${pxToTailwindSize(Math.round(block.height * 0.6))} bg-gray-200 rounded-lg mb-3" />\n${indent(level + 1)}<h3 class="text-sm font-semibold mb-1">卡片标题</h3>\n${indent(level + 1)}<p class="text-xs text-gray-500">卡片描述内容</p>\n${indent(level)}</div>`;
+        return `${indent(level)}<div class="${className}">\n${indent(level + 1)}<div class="card-image" />\n${indent(level + 1)}<h3>卡片标题</h3>\n${indent(level + 1)}<p>卡片描述内容</p>\n${indent(level)}</div>`;
 
       case 'input':
-        return `${indent(level)}<input\n${indent(level + 1)}type="text"\n${indent(level + 1)}placeholder="请输入..."\n${indent(level + 1)}v-model="inputValue"\n${indent(level + 1)}class="w-${w} h-${h} bg-${bgColor} border border-gray-300 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"\n${indent(level)}/>`;
+        return `${indent(level)}<input\n${indent(level + 1)}type="text"\n${indent(level + 1)}placeholder="请输入..."\n${indent(level + 1)}v-model="inputValue"\n${indent(level + 1)}class="${className}"\n${indent(level)}/>`;
 
       case 'image':
-        return `${indent(level)}<div class="w-${w} h-${h} bg-${bgColor} rounded-lg flex items-center justify-center">\n${indent(level + 1)}<span class="text-gray-400 text-sm">Image Placeholder</span>\n${indent(level)}</div>`;
+        return `${indent(level)}<div class="${className}">\n${indent(level + 1)}<span>Image Placeholder</span>\n${indent(level)}</div>`;
 
       default:
-        return `${indent(level)}<div class="w-${w} h-${h} bg-${bgColor} rounded-lg" />`;
+        return `${indent(level)}<div class="${className}" />`;
     }
   };
 
-  const templateLines = blocks.map((block) => blockToTemplate(block, 2));
+  const templateLines = blocks.map((block, index) => blockToTemplate(block, 2, index));
 
   const hasButton = blocks.some((b) => b.type === 'button');
   const hasInput = blocks.some((b) => b.type === 'input');
 
+  // 生成 <script setup>
   let scriptContent = '';
   const imports: string[] = [];
   const refs: string[] = [];
@@ -313,12 +299,54 @@ const generateVueCode = (blocks: DetectedBlock[], imgWidth: number, imgHeight: n
     scriptContent += `</script>`;
   }
 
-  return `<template>
-  <div class="relative w-full max-w-[${imgWidth}px] mx-auto min-h-[${imgHeight}px] bg-white flex flex-col items-center gap-4 p-4">
-${templateLines.join('\n\n')}
-  </div>
-</template>${scriptContent}
-`;
+  // 生成 <style scoped>
+  let styleContent = `\n\n<style scoped>\n`;
+  styleContent += `.container {\n  position: relative;\n  width: 100%;\n  max-width: ${imgWidth}px;\n  min-height: ${imgHeight}px;\n  margin: 0 auto;\n  background: #ffffff;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 16px;\n  padding: 16px;\n}\n\n`;
+
+  blocks.forEach((block, index) => {
+    const className = `block-${block.type}-${index}`;
+    styleContent += `.${className} {\n`;
+    styleContent += `  width: ${block.width}px;\n`;
+    styleContent += `  height: ${block.height}px;\n`;
+    styleContent += `  background-color: ${block.backgroundColor};\n`;
+    styleContent += `  border-radius: 8px;\n`;
+
+    switch (block.type) {
+      case 'header':
+      case 'footer':
+      case 'nav':
+        styleContent += `  width: 100%;\n`;
+        styleContent += `  display: flex;\n`;
+        styleContent += `  align-items: center;\n`;
+        styleContent += `  padding: 0 24px;\n`;
+        break;
+      case 'button':
+        styleContent += `  cursor: pointer;\n`;
+        styleContent += `  display: flex;\n`;
+        styleContent += `  align-items: center;\n`;
+        styleContent += `  justify-content: center;\n`;
+        styleContent += `  font-weight: 500;\n`;
+        styleContent += `  font-size: 14px;\n`;
+        styleContent += `  border: none;\n`;
+        break;
+      case 'card':
+        styleContent += `  padding: 16px;\n`;
+        styleContent += `  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);\n`;
+        break;
+      case 'input':
+        styleContent += `  border: 1px solid #d1d5db;\n`;
+        styleContent += `  padding: 0 12px;\n`;
+        styleContent += `  font-size: 14px;\n`;
+        styleContent += `  outline: none;\n`;
+        break;
+    }
+
+    styleContent += `}\n\n`;
+  });
+
+  styleContent += `</style>`;
+
+  return `<template>\n  <div class="container">\n${templateLines.join('\n\n')}\n  </div>\n</template>${scriptContent}${styleContent}\n`;
 };
 
 /**
